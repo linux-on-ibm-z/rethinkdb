@@ -235,6 +235,7 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
 
     // Currently sp is 16-byte aligned.
 
+#if !defined(__s390x__)
     /* Set up the instruction pointer; this will be popped off the stack by ret (or popped
     explicitly, for ARM) in swapcontext once all the other registers have been "restored". */
     sp--;
@@ -244,6 +245,7 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
     enough to explain why, though. */
     /* Also, on ARM, this gets popped into `r12` */
     *sp = 0;
+#endif // !defined(__s390x__)
 
     sp--;
 
@@ -261,6 +263,9 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
     sp -= 6;
 #elif defined(__arm__)
     /* We must preserve r4, r5, r6, r7, r8, r9, r10, and r11. Because we have to store the LR (r14) in swapcontext as well, we also store r12 in swapcontext to keep the stack double-word-aligned. However, we already accounted for both of those by decrementing sp twice above (once for r14 and once for r12, say). */
+    sp -= 8;
+#elif defined(__s390x__)
+    /* We must preserve r6-r15. r15 is treated like esp (see __i386__), so don't push it onto the stack. */
     sp -= 8;
 #else
 #error "Unsupported architecture."
@@ -423,8 +428,8 @@ void context_switch(artificial_stack_context_ref_t *current_context_out, artific
 }
 
 asm(
-#if defined(__i386__) || defined(__x86_64__) || defined(__arm__)
-// We keep the i386, x86_64, and ARM stuff interleaved in order to enforce commonality.
+#if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined (__s390x__)
+// We keep the i386, x86_64, ARM and s390x stuff interleaved in order to enforce commonality.
 #if defined(__x86_64__)
 #if defined(__LP64__) || defined(__LLP64__)
 // Pointers are of the right size
@@ -442,6 +447,8 @@ asm(
     /* `current_pointer_out` is in `%rdi`. `dest_pointer` is in `%rsi`. */
 #elif defined(__arm__)
     /* `current_pointer_out` is in `r0`. `dest_pointer` is in `r1` */
+#elif defined(__s390x_)
+    /* `current_pointer_out` is in `%r2`. `dest_pointer` is in `%r3`. */
 #endif
 
     /* Save preserved registers (the return address is already on the stack). */
@@ -463,6 +470,9 @@ asm(
     "push {r12}\n"
     "push {r14}\n"
     "push {r4-r11}\n"
+#elif defined(__s390x__)
+    "stmg %r6, %r14, -72(%r15)\n"
+    "aghi %r15, -72\n"
 #endif
 
     /* Save old stack pointer. */
@@ -477,6 +487,9 @@ asm(
 #elif defined(__arm__)
     /* On ARM, the first argument is in `r0`. `r13` is the stack pointer. */
     "str r13, [r0]\n"
+#elif defined(__s390x__)
+    /* On s390x, the first argument is in `%r2`. `%r15` is the stack pointer. */
+    "stg %r15, 0(%r2)\n"
 #endif
 
     /* Load the new stack pointer and the preserved registers. */
@@ -491,6 +504,9 @@ asm(
 #elif defined(__arm__)
     /* On ARM, the second argument is in `r1` */
     "mov r13, r1\n"
+#elif defined(__s390x__)
+    /* On s390x, the second argument is in `r3` */
+    "lgr %r15, %r3\n"
 #endif
 
 #if defined(__i386__)
@@ -509,6 +525,9 @@ asm(
     "pop {r4-r11}\n"
     "pop {r14}\n"
     "pop {r12}\n"
+#elif defined(__s390x__)
+    "lmg %r6, %r14, 0(%r15)\n"
+    "aghi %r15, 72\n"
 #endif
 
 #if defined(__i386__) || defined(__x86_64__)
@@ -521,6 +540,10 @@ asm(
     /* Above, we popped `LR` (`r14`) off the stack, so the bx instruction will
     jump to the correct return address. */
     "bx r14\n"
+#elif defined(__s390x__)
+    /* Above, we popped the link register (`r14`) off the stack, so the br
+    instruction will jump to the correct return address. */
+    "br %r14\n"
 #endif
 
 #else
