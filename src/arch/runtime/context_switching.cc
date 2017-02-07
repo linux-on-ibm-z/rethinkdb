@@ -228,6 +228,16 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
     /* Start at the beginning. */
     sp = reinterpret_cast<uintptr_t *>(uintptr_t(stack.get()) + stack_size);
 
+#if defined(__s390x__)
+    /* Align stack. The s390x ABI requires the stack pointer to always be
+    8-byte-aligned at function calls. */
+    sp = reinterpret_cast<uintptr_t *>(uintptr_t(sp) & static_cast<uintptr_t>(-8L));
+
+    /* Allocate 160 bytes of caller-allocated stack frame. */
+    for (int i = 0; i < 20; i++) {
+        *(sp--) = 0;
+    }
+#else
     /* Align stack. The x86-64 ABI requires the stack pointer to always be
     16-byte-aligned at function calls. That is, "(%rsp - 8) is always a multiple
     of 16 when control is transferred to the function entry point". */
@@ -235,7 +245,6 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
 
     // Currently sp is 16-byte aligned.
 
-#if !defined(__s390x__)
     /* Set up the instruction pointer; this will be popped off the stack by ret (or popped
     explicitly, for ARM) in swapcontext once all the other registers have been "restored". */
     sp--;
@@ -266,7 +275,7 @@ artificial_stack_t::artificial_stack_t(void (*initial_fun)(void), size_t _stack_
     sp -= 8;
 #elif defined(__s390x__)
     /* We must preserve r6-r15. r15 is treated like esp (see __i386__), so don't push it onto the stack. */
-    sp -= 8;
+    sp -= 16;
 #else
 #error "Unsupported architecture."
 #endif
@@ -471,8 +480,16 @@ asm(
     "push {r14}\n"
     "push {r4-r11}\n"
 #elif defined(__s390x__)
-    "stmg %r6, %r14, -72(%r15)\n"
-    "aghi %r15, -72\n"
+    "aghi %r15, -136\n"
+    "stmg %r6, %r14, 64(%r15)\n"
+    "std %f8, 0(%r15)\n"
+    "std %f9, 8(%r15)\n"
+    "std %f10, 16(%r15)\n"
+    "std %f11, 24(%r15)\n"
+    "std %f12, 32(%r15)\n"
+    "std %f13, 40(%r15)\n"
+    "std %f14, 48(%r15)\n"
+    "std %f15, 56(%r15)\n"
 #endif
 
     /* Save old stack pointer. */
@@ -526,8 +543,16 @@ asm(
     "pop {r14}\n"
     "pop {r12}\n"
 #elif defined(__s390x__)
-    "lmg %r6, %r14, 0(%r15)\n"
-    "aghi %r15, 72\n"
+    "lmg %r6, %r14, 64(%r15)\n"
+    "ld %f8, 0(%r15)\n"
+    "ld %f9, 8(%r15)\n"
+    "ld %f10, 16(%r15)\n"
+    "ld %f11, 24(%r15)\n"
+    "ld %f12, 32(%r15)\n"
+    "ld %f13, 40(%r15)\n"
+    "ld %f14, 48(%r15)\n"
+    "ld %f15, 56(%r15)\n"
+    "aghi %r15, 136\n"
 #endif
 
 #if defined(__i386__) || defined(__x86_64__)
