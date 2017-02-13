@@ -16,6 +16,24 @@
 
 namespace unittest {
 
+template<class Integral>
+void write_little_endian(char *buf, Integral v) {
+    static_assert(std::is_integral<Integral>::value, "v must be an integral");
+    for (size_t i = 0; i < sizeof(Integral); i++) {
+        buf[i] = static_cast<char>(v);
+        v >>= 8;
+    }
+}
+
+template<class Integral>
+void read_little_endian(const char *buf, Integral &v) {
+    static_assert(std::is_integral<Integral>::value, "v must be an integral");
+    v = 0;
+    for (size_t i = 0; i < sizeof(Integral); i++) {
+        v |= (static_cast<Integral>(buf[i]) & 0xff) << i*8;
+    }
+}
+
 class count_callback_t : public ql::env_t::eval_callback_t {
 public:
     explicit count_callback_t(uint32_t *_count_out) : count_out(_count_out) {
@@ -306,9 +324,13 @@ const std::string stop_json(strprintf("[%" PRIi32 "]",
                                       Query::STOP));
 const std::string invalid_json("]");
 
-template <class T>
-void append_to_message(const T& item, std::string *message) {
-    message->append(reinterpret_cast<const char *>(&item), sizeof(item));
+template <class Integral>
+void append_to_message(Integral item, std::string *message) {
+    static_assert(std::is_integral<Integral>::value, "item must be an integral");
+
+    char buf[sizeof(Integral)];
+    write_little_endian(buf, item);
+    message->append(buf, sizeof(Integral));
 }
 
 void append_to_message(const std::string &item, std::string *message) {
@@ -387,15 +409,18 @@ std::string get_query_response(tcp_conn_stream_t *conn) {
     int64_t res;
     int64_t token;
     uint32_t response_size;
-    res = conn->read(&token, sizeof(token));
+    char buf[8];
+    res = conn->read(buf, sizeof(token));
     if (res == 0) {
         return std::string();
     }
     guarantee(res == sizeof(token));
+    read_little_endian(buf, token);
     guarantee(token == unparsable_query_token || token == test_token);
 
-    res = conn->read(&response_size, sizeof(response_size));
+    res = conn->read(buf, sizeof(response_size));
     guarantee(res == sizeof(response_size));
+    read_little_endian(buf, response_size);
 
     scoped_array_t<char> response_data(response_size + 1);
     res = conn->read(response_data.data(), response_size);
@@ -500,8 +525,9 @@ http_req_t make_http_query(const std::string &conn_id, const std::string &query_
     http_req_t query_req("/query");
     query_req.method = http_method_t::POST;
     query_req.query_params.insert(std::make_pair("conn_id", conn_id));
-    query_req.body.append(reinterpret_cast<const char *>(&test_token),
-                          sizeof(test_token));
+    char buf[sizeof(test_token)];
+    write_little_endian(buf, test_token);
+    query_req.body.append(buf, sizeof(test_token));
     query_req.body.append(query_json);
     return query_req;
 }
@@ -510,10 +536,12 @@ std::string parse_http_result(const http_res_t &http_res, int32_t expected_type)
     guarantee(http_res.body.size() > sizeof(int64_t) + sizeof(uint32_t));
     const char *data = http_res.body.data();
 
-    int64_t token = *reinterpret_cast<const int64_t *>(data);
+    int64_t token;
+    read_little_endian(data, token);
     data += sizeof(token);
 
-    uint32_t data_size = *reinterpret_cast<const uint32_t *>(data);
+    uint32_t data_size = 0;
+    read_little_endian(data, data_size);
     data += sizeof(data_size);
 
     return parse_json_error_message(data, expected_type);
