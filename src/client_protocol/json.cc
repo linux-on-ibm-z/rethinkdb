@@ -55,10 +55,10 @@ scoped_ptr_t<ql::query_params_t> json_protocol_t::parse_query(
     conn->read_buffered(&size, sizeof(size), interruptor);
     ql::response_t error;
 
-    #ifdef __s390x__
+#ifdef __s390x__
     token = __builtin_bswap64(token);
     size = __builtin_bswap32(size);
-    #endif
+#endif
 
     if (size >= wire_protocol_t::TOO_LARGE_QUERY_SIZE) {
         error.fill_error(Response::CLIENT_ERROR,
@@ -231,17 +231,17 @@ void json_protocol_t::send_response(ql::response_t *response,
 
     // Fill in the token and size
     char *mutable_buffer = buffer.GetMutableBuffer();
-    #ifdef __s390x__
-    token=__builtin_bswap64(token);
-    #endif
+#ifdef __s390x__
+    token = __builtin_bswap64(token);
+#endif
     for (size_t i = 0; i < sizeof(token); ++i) {
         mutable_buffer[i] = reinterpret_cast<const char *>(&token)[i];
     }
 
     data_size = static_cast<uint32_t>(payload_size);
-    #ifdef __s390x__
-    data_size=__builtin_bswap32(data_size);
-    #endif
+#ifdef __s390x__
+    data_size = __builtin_bswap32(data_size);
+#endif
     for (size_t i = 0; i < sizeof(data_size); ++i) {
         mutable_buffer[i + sizeof(token)] =
             reinterpret_cast<const char *>(&data_size)[i];

@@ -280,9 +280,9 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
         int32_t client_magic_number;
         conn->read_buffered(
             &client_magic_number, sizeof(client_magic_number), &ct_keepalive);
-        #ifdef __s390x__
+#ifdef __s390x__
         client_magic_number = __builtin_bswap32(client_magic_number);
-        #endif
+#endif
 
         switch (client_magic_number) {
             case VersionDummy::V0_1:
@@ -318,9 +318,9 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
 
             uint32_t auth_key_size;
             conn->read_buffered(&auth_key_size, sizeof(uint32_t), &ct_keepalive);
-            #ifdef __s390x__
+#ifdef __s390x__
             auth_key_size = __builtin_bswap32(auth_key_size);
-            #endif
+#endif
             if (auth_key_size > 2048) {
                 throw client_protocol::client_server_error_t(
                     -1, "Client provided an authorization key that is too long.");
@@ -340,9 +340,9 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
 
             int32_t wire_protocol;
             conn->read_buffered(&wire_protocol, sizeof(wire_protocol), &ct_keepalive);
-            #ifdef __s390x__
+#ifdef __s390x__
             wire_protocol = __builtin_bswap32(wire_protocol);
-            #endif
+#endif
             switch (wire_protocol) {
                 case VersionDummy::JSON:
                     break;
@@ -749,9 +749,9 @@ void query_server_t::handle(const http_req_t &req,
     json_protocol_t::write_response_to_buffer(&response, &buffer);
 
     uint32_t size = static_cast<uint32_t>(buffer.GetSize());
-    #ifdef __s390x__
+#ifdef __s390x__
     size = __builtin_bswap32(size);
-    #endif
+#endif
     char header_buffer[sizeof(token) + sizeof(size)];
     memcpy(&header_buffer[0], &token, sizeof(token));
     memcpy(&header_buffer[sizeof(token)], &size, sizeof(size));
