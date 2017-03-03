@@ -119,9 +119,6 @@ static inline std::string time2str(const time_t &t) {
 
 #define ANY_PORT 0
 
-const int _is_bigendian = 1;
-#define is_bigendian() ( (*(char*)&_is_bigendian) == 0 )
-
 template <class T>
 T clone(const T& x) {
     return x;

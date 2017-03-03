@@ -281,9 +281,7 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
         conn->read_buffered(
             &client_magic_number, sizeof(client_magic_number), &ct_keepalive);
         #ifdef __s390x__
-        if (is_bigendian()){
-            client_magic_number = __builtin_bswap32(client_magic_number);
-        }
+        client_magic_number = __builtin_bswap32(client_magic_number);
         #endif
 
         switch (client_magic_number) {
@@ -321,9 +319,7 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
             uint32_t auth_key_size;
             conn->read_buffered(&auth_key_size, sizeof(uint32_t), &ct_keepalive);
             #ifdef __s390x__
-            if (is_bigendian()) {
-                auth_key_size = __builtin_bswap32(auth_key_size);
-            }
+            auth_key_size = __builtin_bswap32(auth_key_size);
             #endif
             if (auth_key_size > 2048) {
                 throw client_protocol::client_server_error_t(
@@ -345,9 +341,7 @@ void query_server_t::handle_conn(const scoped_ptr_t<tcp_conn_descriptor_t> &ncon
             int32_t wire_protocol;
             conn->read_buffered(&wire_protocol, sizeof(wire_protocol), &ct_keepalive);
             #ifdef __s390x__
-            if (is_bigendian()) {
-                wire_protocol = __builtin_bswap32(wire_protocol);
-            }
+            wire_protocol = __builtin_bswap32(wire_protocol);
             #endif
             switch (wire_protocol) {
                 case VersionDummy::JSON:
@@ -756,9 +750,7 @@ void query_server_t::handle(const http_req_t &req,
 
     uint32_t size = static_cast<uint32_t>(buffer.GetSize());
     #ifdef __s390x__
-    if (is_bigendian()) {
-        size = __builtin_bswap32(size);
-    }
+    size = __builtin_bswap32(size);
     #endif
     char header_buffer[sizeof(token) + sizeof(size)];
     memcpy(&header_buffer[0], &token, sizeof(token));
