@@ -673,6 +673,9 @@ void query_server_t::handle(const http_req_t &req,
     // Parse the token out from the start of the request
     char *data = body_buf.data();
     token = *reinterpret_cast<const int64_t *>(data);
+#ifdef __s390x__
+    token = __builtin_bswap64(token);
+#endif
     data += sizeof(token);
 
     ql::response_t response;
