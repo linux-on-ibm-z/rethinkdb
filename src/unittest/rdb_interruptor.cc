@@ -16,22 +16,54 @@
 
 namespace unittest {
 
-template<class Integral>
-void write_little_endian(char *buf, Integral v) {
-    static_assert(std::is_integral<Integral>::value, "v must be an integral");
-    for (size_t i = 0; i < sizeof(Integral); i++) {
-        buf[i] = static_cast<char>(v);
-        v >>= 8;
-    }
+// Zero extend the given byte to 64-bits.
+uint64_t zero_extend(char x) {
+	return static_cast<uint64_t>(static_cast<uint8_t>(x));
 }
 
-template<class Integral>
-void read_little_endian(const char *buf, Integral &v) {
-    static_assert(std::is_integral<Integral>::value, "v must be an integral");
-    v = 0;
-    for (size_t i = 0; i < sizeof(Integral); i++) {
-        v |= (static_cast<Integral>(buf[i]) & 0xff) << i*8;
-    }
+// Read an 8-byte little-endian encoded integer from the given string.
+uint64_t decode_le64(const std::string& buf) {
+	return zero_extend(buf[0]) |
+		zero_extend(buf[1]) << 8 |
+		zero_extend(buf[2]) << 16 |
+		zero_extend(buf[3]) << 24 |
+		zero_extend(buf[4]) << 32 |
+		zero_extend(buf[5]) << 40 |
+		zero_extend(buf[6]) << 48 |
+		zero_extend(buf[7]) << 56;
+}
+
+// Read a 4-byte little-endian encoded integer from the given string.
+uint32_t decode_le32(const std::string& buf) {
+	return static_cast<uint32_t>(
+		zero_extend(buf[0]) |
+		zero_extend(buf[1]) << 8 |
+		zero_extend(buf[2]) << 16 |
+		zero_extend(buf[3]) << 32);
+}
+
+// Write an 8-byte integer to a string in little-endian byte order.
+std::string encode_le64(uint64_t x) {
+	char buf[8];
+	buf[0] = x;
+	buf[1] = x >> 8;
+	buf[2] = x >> 16;
+	buf[3] = x >> 24;
+	buf[4] = x >> 32;
+	buf[5] = x >> 40;
+	buf[6] = x >> 48;
+	buf[7] = x >> 56;
+	return std::string(&buf[0], 8);
+}
+
+// Write a 4-byte integer to a string in little-endian byte order.
+std::string encode_le32(uint32_t x) {
+	char buf[4];
+	buf[0] = x;
+	buf[1] = x >> 8;
+	buf[2] = x >> 16;
+	buf[3] = x >> 24;
+	return std::string(&buf[0], 4);
 }
 
 class count_callback_t : public ql::env_t::eval_callback_t {
@@ -326,11 +358,17 @@ const std::string invalid_json("]");
 
 template <class Integral>
 void append_to_message(Integral item, std::string *message) {
+    const size_t size = sizeof(Integral);
     static_assert(std::is_integral<Integral>::value, "item must be an integral");
-
-    char buf[sizeof(Integral)];
-    write_little_endian(buf, item);
-    message->append(buf, sizeof(Integral));
+    static_assert(size == 4 || size == 8, "item size must be 4 or 8 bytes");
+    switch (size) {
+    case 4:
+        message->append(encode_le32(item));
+        break;
+    case 8:
+        message->append(encode_le64(item));
+        break;
+    }
 }
 
 void append_to_message(const std::string &item, std::string *message) {
@@ -415,12 +453,12 @@ std::string get_query_response(tcp_conn_stream_t *conn) {
         return std::string();
     }
     guarantee(res == sizeof(token));
-    read_little_endian(buf, token);
+    token = decode_le64(std::string(buf, 8));
     guarantee(token == unparsable_query_token || token == test_token);
 
     res = conn->read(buf, sizeof(response_size));
     guarantee(res == sizeof(response_size));
-    read_little_endian(buf, response_size);
+    response_size = decode_le32(std::string(buf, 4));
 
     scoped_array_t<char> response_data(response_size + 1);
     res = conn->read(response_data.data(), response_size);
@@ -525,9 +563,7 @@ http_req_t make_http_query(const std::string &conn_id, const std::string &query_
     http_req_t query_req("/query");
     query_req.method = http_method_t::POST;
     query_req.query_params.insert(std::make_pair("conn_id", conn_id));
-    char buf[sizeof(test_token)];
-    write_little_endian(buf, test_token);
-    query_req.body.append(buf, sizeof(test_token));
+    query_req.body.append(encode_le64(test_token));
     query_req.body.append(query_json);
     return query_req;
 }
@@ -536,12 +572,10 @@ std::string parse_http_result(const http_res_t &http_res, int32_t expected_type)
     guarantee(http_res.body.size() > sizeof(int64_t) + sizeof(uint32_t));
     const char *data = http_res.body.data();
 
-    int64_t token;
-    read_little_endian(data, token);
+    int64_t token = decode_le64(std::string(data, 8));
     data += sizeof(token);
 
-    uint32_t data_size = 0;
-    read_little_endian(data, data_size);
+    uint32_t data_size = decode_le32(std::string(data, 4));
     data += sizeof(data_size);
 
     return parse_json_error_message(data, expected_type);
