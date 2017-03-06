@@ -1,33 +1,6 @@
 if [[ "$OS" = Windows ]]; then
-
     # V8 3.30 doesn't play well with Visual Studio 2015
     # But 4.7 has no source distribution, making it harder to build on Linux
-
-    version=3.30.33.16-patched
-
-    src_url=http://commondatastorage.googleapis.com/chromium-browser-official/v8-${version/-patched/}.tar.bz2
-    src_url_sha1=e753b6671eecf565d96c1e5a83563535ee2fe24b
-elif [[ "$(uname -m)" = s390x ]]; then
-
-    # V8 3.30.33 does not support s390x.
-    # This s390x-specific code can be removed once V8 is updated to 5.1+.
-    version=3.28-s390
-
-    pkg_fetch () {
-        pkg_make_tmp_fetch_dir
-        git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$tmp_dir/depot_tools"
-        PATH="$tmp_dir/depot_tools:$PATH"
-        in_dir "$tmp_dir" gclient config --unmanaged https://github.com/ibmruntimes/v8z.git
-        in_dir "$tmp_dir" git clone https://github.com/ibmruntimes/v8z.git
-        cd "$tmp_dir/v8z"
-        git checkout 3.28-s390
-        rm -rf "$src_dir"
-        mv "$tmp_dir/v8z" "$src_dir"
-        mv "$tmp_dir/depot_tools" "$src_dir"
-
-        pkg_remove_tmp_fetch_dir
-    }
-else
     version=4.7.80.23
 
     pkg_fetch () {
@@ -52,6 +25,31 @@ else
 
         pkg_remove_tmp_fetch_dir
     }
+
+elif [[ "$(uname -m)" = s390x ]]; then
+    # V8 3.30.33 does not support s390x.
+    # This s390x-specific code can be removed once V8 is updated to 5.1+.
+    version=3.28-s390
+
+    pkg_fetch () {
+        pkg_make_tmp_fetch_dir
+        git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$tmp_dir/depot_tools"
+        PATH="$tmp_dir/depot_tools:$PATH"
+        in_dir "$tmp_dir" gclient config --unmanaged https://github.com/ibmruntimes/v8z.git
+        in_dir "$tmp_dir" git clone https://github.com/ibmruntimes/v8z.git
+        cd "$tmp_dir/v8z"
+        git checkout 3.28-s390
+        rm -rf "$src_dir"
+        mv "$tmp_dir/v8z" "$src_dir"
+        mv "$tmp_dir/depot_tools" "$src_dir"
+
+        pkg_remove_tmp_fetch_dir
+    }
+else
+    version=3.30.33.16-patched
+
+    src_url=http://commondatastorage.googleapis.com/chromium-browser-official/v8-${version/-patched/}.tar.bz2
+    src_url_sha1=e753b6671eecf565d96c1e5a83563535ee2fe24b
 fi
 
 pkg_install-include () {
