@@ -754,6 +754,7 @@ void query_server_t::handle(const http_req_t &req,
     uint32_t size = static_cast<uint32_t>(buffer.GetSize());
 #ifdef __s390x__
     size = __builtin_bswap32(size);
+    token = __builtin_bswap64(token);
 #endif
     char header_buffer[sizeof(token) + sizeof(size)];
     memcpy(&header_buffer[0], &token, sizeof(token));
