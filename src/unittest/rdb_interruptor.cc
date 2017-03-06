@@ -16,56 +16,6 @@
 
 namespace unittest {
 
-// Zero extend the given byte to 64-bits.
-uint64_t zero_extend(char x) {
-	return static_cast<uint64_t>(static_cast<uint8_t>(x));
-}
-
-// Read an 8-byte little-endian encoded integer from the given string.
-uint64_t decode_le64(const std::string& buf) {
-	return zero_extend(buf[0]) |
-		zero_extend(buf[1]) << 8 |
-		zero_extend(buf[2]) << 16 |
-		zero_extend(buf[3]) << 24 |
-		zero_extend(buf[4]) << 32 |
-		zero_extend(buf[5]) << 40 |
-		zero_extend(buf[6]) << 48 |
-		zero_extend(buf[7]) << 56;
-}
-
-// Read a 4-byte little-endian encoded integer from the given string.
-uint32_t decode_le32(const std::string& buf) {
-	return static_cast<uint32_t>(
-		zero_extend(buf[0]) |
-		zero_extend(buf[1]) << 8 |
-		zero_extend(buf[2]) << 16 |
-		zero_extend(buf[3]) << 32);
-}
-
-// Write an 8-byte integer to a string in little-endian byte order.
-std::string encode_le64(uint64_t x) {
-	char buf[8];
-	buf[0] = x;
-	buf[1] = x >> 8;
-	buf[2] = x >> 16;
-	buf[3] = x >> 24;
-	buf[4] = x >> 32;
-	buf[5] = x >> 40;
-	buf[6] = x >> 48;
-	buf[7] = x >> 56;
-	return std::string(&buf[0], 8);
-}
-
-// Write a 4-byte integer to a string in little-endian byte order.
-std::string encode_le32(uint32_t x) {
-	char buf[4];
-	buf[0] = x;
-	buf[1] = x >> 8;
-	buf[2] = x >> 16;
-	buf[3] = x >> 24;
-	return std::string(&buf[0], 4);
-}
-
 class count_callback_t : public ql::env_t::eval_callback_t {
 public:
     explicit count_callback_t(uint32_t *_count_out) : count_out(_count_out) {

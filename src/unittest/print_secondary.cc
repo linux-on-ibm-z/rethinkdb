@@ -2,18 +2,14 @@
 #include "containers/optional.hpp"
 #include "rdb_protocol/datum.hpp"
 #include "unittest/gtest.hpp"
+#include "unittest/unittest_utils.hpp"
 
 namespace unittest {
 void test_mangle(const std::string &pkey, const std::string &skey, optional<uint64_t> tag = optional<uint64_t>()) {
     std::string tag_string;
     if (tag) {
         // Encode tag in little endian.
-        const size_t tag_size = sizeof(*tag);
-        char buf[tag_size];
-        for (size_t i = 0; i < tag_size; i++) {
-            buf[i] = static_cast<char>((*tag) >> i*8);
-        }
-        tag_string = std::string(&buf[0], tag_size);
+        tag_string = encode_le64(*tag);
     }
     auto versions = {
         reql_version_t::v1_16,
