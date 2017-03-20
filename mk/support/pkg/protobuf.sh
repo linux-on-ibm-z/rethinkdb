@@ -1,8 +1,8 @@
 
-version=2.5.0
+version=3.2.0
 
-src_url=https://github.com/google/protobuf/releases/download/v$version/protobuf-$version.tar.bz2
-src_url_sha1=62c10dcdac4b69cc8c6bb19f73db40c264cb2726
+src_url=https://github.com/google/protobuf/archive/v$version.tar.gz
+src_url_sha1=2d47c98c7f35d74d475ba0796d345a45c22030fd
 
 pkg_install-include () {
     in_dir "$src_dir/src" find . -name \*.h | while read -r file; do
@@ -29,6 +29,7 @@ pkg_install () (
         fi
     fi
 
+    in_dir "$build_dir" ./autogen.sh
     pkg_configure --prefix="$(niceabspath "$install_dir")" $configure_flags --enable-static --disable-shared
     pkg_make ${protobuf_install_target:-install}
 
