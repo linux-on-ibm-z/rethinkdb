@@ -58,7 +58,7 @@ pkg_install-include () {
     rm -rf "$install_dir/include"
     mkdir -p "$install_dir/include"
 
-    if [[ "$($CXX -dumpmachine)" = "s390x-linux-gnu" ]]; then
+    if [[ "$(uname -m)" = s390x ]]; then
         # for s390x we need to generate correct header files
        cd $build_dir
        export PATH=$(pwd)/depot_tools:$PATH
