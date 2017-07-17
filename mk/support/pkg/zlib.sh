@@ -1,7 +1,7 @@
 
 version=1.2.8
 
-src_url=http://zlib.net/zlib-$version.tar.gz
+src_url=http://zlib.net/fossils/zlib-$version.tar.gz
 
 pkg_install-include () {
     mkdir -p "$install_dir/include"
