@@ -1,13 +1,14 @@
 // Copyright 2010-2013 RethinkDB, all rights reserved.
 #include "unittest/gtest.hpp"
+#include "unittest/unittest_utils.hpp"
 #include "rdb_protocol/datum.hpp"
 
 namespace unittest {
 void test_mangle(const std::string &pkey, const std::string &skey, boost::optional<uint64_t> tag = boost::optional<uint64_t>()) {
     std::string tag_string;
     if (tag) {
-        tag_string = std::string(reinterpret_cast<const char *>(&*tag),
-                                 sizeof(uint64_t));
+        // Encode tag in little endian.
+        tag_string = encode_le64(*tag);
     }
     auto versions = {
         reql_version_t::v1_16,

@@ -68,7 +68,7 @@ TEST(UtilsTest, TimeLocal) {
     _putenv("TZ=UTC+7"); // TODO WINDOWS: this seems wrong, but causes the test to pass
     _tzset();
 #else
-    setenv("TZ", "America/Los_Angeles", 1);
+    setenv("TZ", "PST8PDT", 1);
     tzset();
 #endif
 

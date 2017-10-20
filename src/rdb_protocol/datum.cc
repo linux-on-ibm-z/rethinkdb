@@ -1118,7 +1118,9 @@ std::string datum_t::mangle_secondary(
 std::string datum_t::encode_tag_num(uint64_t tag_num) {
     static_assert(sizeof(tag_num) == tag_size,
             "tag_size constant is assumed to be the size of a uint64_t.");
-#ifndef BOOST_LITTLE_ENDIAN
+#if defined(__s390x__)
+    tag_num = __builtin_bswap64(tag_num);
+#elif !defined(BOOST_LITTLE_ENDIAN)
     static_assert(false, "This piece of code will break on big-endian systems.");
 #endif
     return std::string(reinterpret_cast<const char *>(&tag_num), tag_size);
@@ -1244,10 +1246,13 @@ components_t parse_secondary(const std::string &key) THROWS_NOTHING {
     std::string tag_str = key.substr(start_of_tag, key.size() - (start_of_tag + 2));
     boost::optional<uint64_t> tag_num;
     if (tag_str.size() != 0) {
-#ifndef BOOST_LITTLE_ENDIAN
+        uint64_t t = *reinterpret_cast<const uint64_t *>(tag_str.data());
+#if defined(__s390x__)
+        t = __builtin_bswap64(t);
+#elif !defined(BOOST_LITTLE_ENDIAN)
         static_assert(false, "This piece of code will break on little endian systems.");
 #endif
-        tag_num = *reinterpret_cast<const uint64_t *>(tag_str.data());
+        tag_num = t;
     }
     return components_t{
         skey_version,
